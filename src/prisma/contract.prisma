@@ -1,0 +1,147 @@
+// use prisma-next
+
+enum UserRole {
+  @@type("pg/text@1")
+
+  ATTENDEE  = "ATTENDEE"
+  ORGANIZER = "ORGANIZER"
+  ADMIN     = "ADMIN"
+}
+
+enum OrganizerApprovalStatus {
+  @@type("pg/text@1")
+
+  DRAFT    = "draft"
+  PENDING  = "pending"
+  APPROVED = "approved"
+  REJECTED = "rejected"
+}
+
+enum EventType {
+  @@type("pg/text@1")
+
+  FREE = "free"
+  PAID = "paid"
+}
+
+enum EventStatus {
+  @@type("pg/text@1")
+
+  DRAFT            = "draft"
+  PENDING_APPROVAL = "pending_approval"
+  APPROVED         = "approved"
+  REJECTED         = "rejected"
+  CANCELLED        = "cancelled"
+  POSTPONED        = "postponed"
+}
+
+model User {
+  id                   Uuid     @id @default(uuid())
+  fullName             String
+  email                String   @unique
+  phoneNumber          String?
+  passwordHash         String?
+  role                 UserRole @default(ATTENDEE)
+  isEmailVerified      Boolean  @default(false)
+
+  verificationCode     String?
+  verificationExpiry   DateTime?
+
+  resetPasswordCode    String?
+  resetPasswordExpiry  DateTime?
+
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @default(now())
+
+  organizerProfile OrganizerProfile?
+  events           Event[]
+
+  @@map("users")
+}
+
+model OrganizerProfile {
+  id               Uuid                    @id @default(uuid())
+  userId           Uuid                    @unique
+
+  organisationName String
+  businessEmail    String?
+  businessPhone    String?
+  website          String?
+
+  address          String?
+  city             String?
+  state            String?
+  country          String?
+
+  bankName         String?
+  accountName      String?
+  accountNumber    String?
+
+  approvalStatus   OrganizerApprovalStatus @default(DRAFT)
+
+  submittedAt      DateTime?
+  reviewedAt       DateTime?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("organizer_profiles")
+}
+
+model Category {
+  id        Uuid     @id @default(uuid())
+  name      String   @unique
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  events Event[]
+
+  @@map("categories")
+}
+
+model Event {
+  id          Uuid        @id @default(uuid())
+
+  organizerId Uuid
+  categoryId  Uuid?
+
+  title       String
+  slug        String      @unique
+
+  description String?
+
+  type        EventType   @default(FREE)
+  status      EventStatus @default(DRAFT)
+
+  coverImage  String?
+
+  startDate   DateTime?
+  endDate     DateTime?
+
+  isOnline    Boolean     @default(false)
+
+  venueName   String?
+  venueAddress String?
+  venueCity   String?
+  venueState  String?
+  venueCountry String?
+
+  capacity    Int?
+
+  minPrice    Float       @default(0)
+
+  isPromoted  Boolean     @default(false)
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @default(now())
+
+  organizer User      @relation(fields: [organizerId], references: [id])
+  category  Category? @relation(fields: [categoryId], references: [id])
+
+  @@map("events")
+}
