@@ -17,9 +17,21 @@ dotenv.config();
 
 const app = express();
 
+const allowedOrigins = [
+  "http://localhost:4001",
+  "https://eventra-portfolio.vercel.app",
+];
+
 app.use(
   cors({
-    origin: "http://localhost:4001",
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`Origin ${origin} is not allowed by CORS`));
+    },
     credentials: true,
   }),
 );
