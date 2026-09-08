@@ -2,9 +2,11 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+const FROM_EMAIL = "Eventra <noreply@eventra.lovie.me>";
+
 export async function sendVerificationEmail(email: string, code: string) {
   const { error } = await resend.emails.send({
-    from: "Eventra <onboarding@resend.dev>",
+    from: FROM_EMAIL,
     to: email,
     subject: "Verify your Eventra account",
     html: `
@@ -41,7 +43,7 @@ export async function sendVerificationEmail(email: string, code: string) {
 
 export async function sendPasswordResetEmail(email: string, code: string) {
   const { error } = await resend.emails.send({
-    from: "Eventra <onboarding@resend.dev>",
+    from: FROM_EMAIL,
     to: email,
     subject: "Reset your Eventra password",
     html: `
