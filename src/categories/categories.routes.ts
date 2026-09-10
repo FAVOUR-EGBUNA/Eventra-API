@@ -13,16 +13,23 @@ router.get("/", async (_req, res) => {
       isActive: true,
     }).all();
 
-    const body = categories.map((category) => ({
-      _id: category.id,
-      name: category.name,
-      slug: category.slug,
-      isActive: category.isActive,
+    const events = await db.orm.public.Event.where({
+      status: "approved",
+    }).all();
 
-      // We don't have event-count aggregation wired yet.
-      // Frontend treats this field as optional.
-      eventCount: 0,
-    }));
+    const body = categories.map((category) => {
+      const eventCount = events.filter(
+        (event) => event.categoryId === category.id,
+      ).length;
+
+      return {
+        _id: category.id,
+        name: category.name,
+        slug: category.slug,
+        isActive: category.isActive,
+        eventCount,
+      };
+    });
 
     return res.status(200).json({
       success: true,

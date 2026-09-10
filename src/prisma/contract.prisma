@@ -35,26 +35,46 @@ enum EventStatus {
   POSTPONED        = "postponed"
 }
 
+enum OrderStatus {
+  @@type("pg/text@1")
+
+  PENDING   = "pending"
+  COMPLETED = "completed"
+  CANCELLED = "cancelled"
+  FAILED    = "failed"
+}
+
+enum TicketStatus {
+  @@type("pg/text@1")
+
+  ACTIVE    = "active"
+  USED      = "used"
+  CANCELLED = "cancelled"
+  REFUNDED  = "refunded"
+}
+
 model User {
-  id                   Uuid     @id @default(uuid())
-  fullName             String
-  email                String   @unique
-  phoneNumber          String?
-  passwordHash         String?
-  role                 UserRole @default(ATTENDEE)
-  isEmailVerified      Boolean  @default(false)
+  id                  Uuid     @id @default(uuid())
+  fullName            String
+  email               String   @unique
+  phoneNumber         String?
+  passwordHash        String?
+  role                UserRole @default(ATTENDEE)
+  isEmailVerified     Boolean  @default(false)
 
-  verificationCode     String?
-  verificationExpiry   DateTime?
+  verificationCode    String?
+  verificationExpiry  DateTime?
 
-  resetPasswordCode    String?
-  resetPasswordExpiry  DateTime?
+  resetPasswordCode   String?
+  resetPasswordExpiry DateTime?
 
   createdAt            DateTime @default(now())
   updatedAt            DateTime @default(now())
 
   organizerProfile OrganizerProfile?
   events           Event[]
+  orders           Order[]
+  tickets          Ticket[]
 
   @@map("users")
 }
@@ -91,10 +111,10 @@ model OrganizerProfile {
 }
 
 model Category {
-  id        Uuid     @id @default(uuid())
-  name      String   @unique
-  slug      String   @unique
-  isActive  Boolean  @default(true)
+  id        Uuid    @id @default(uuid())
+  name      String  @unique
+  slug      String  @unique
+  isActive  Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
@@ -105,43 +125,144 @@ model Category {
 }
 
 model Event {
-  id          Uuid        @id @default(uuid())
+  id           Uuid        @id @default(uuid())
 
-  organizerId Uuid
-  categoryId  Uuid?
+  organizerId  Uuid
+  categoryId   Uuid?
 
-  title       String
-  slug        String      @unique
+  title        String
+  slug         String      @unique
 
-  description String?
+  description  String?
 
-  type        EventType   @default(FREE)
-  status      EventStatus @default(DRAFT)
+  type         EventType   @default(FREE)
+  status       EventStatus @default(DRAFT)
 
-  coverImage  String?
+  coverImage   String?
 
-  startDate   DateTime?
-  endDate     DateTime?
+  startDate    DateTime?
+  endDate      DateTime?
 
-  isOnline    Boolean     @default(false)
+  isOnline     Boolean     @default(false)
 
-  venueName   String?
+  venueName    String?
   venueAddress String?
-  venueCity   String?
-  venueState  String?
+  venueCity    String?
+  venueState   String?
   venueCountry String?
 
-  capacity    Int?
+  capacity     Int?
 
-  minPrice    Float       @default(0)
+  minPrice     Float       @default(0)
 
-  isPromoted  Boolean     @default(false)
+  isPromoted   Boolean     @default(false)
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @default(now())
+
+  organizer  User         @relation(fields: [organizerId], references: [id])
+  category   Category?    @relation(fields: [categoryId], references: [id])
+
+  ticketTypes TicketType[]
+  orders      Order[]
+  tickets     Ticket[]
+
+  @@map("events")
+}
+
+model TicketType {
+  id           Uuid    @id @default(uuid())
+
+  eventId      Uuid
+
+  name         String
+  description  String?
+
+  price        Float   @default(0)
+
+  quantity     Int
+  quantitySold Int     @default(0)
+
+  isActive     Boolean @default(true)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now())
+
+  event      Event       @relation(fields: [eventId], references: [id])
+  orderItems OrderItem[]
+  tickets    Ticket[]
+
+  @@map("ticket_types")
+}
+
+model Order {
+  id          Uuid        @id @default(uuid())
+
+  userId      Uuid
+  eventId     Uuid
+
+  reference   String      @unique
+  status      OrderStatus @default(PENDING)
+
+  total       Float       @default(0)
+
+  guestName   String?
+  guestEmail  String?
+  guestPhone  String?
 
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @default(now())
 
-  organizer User      @relation(fields: [organizerId], references: [id])
-  category  Category? @relation(fields: [categoryId], references: [id])
+  user        User        @relation(fields: [userId], references: [id])
+  event       Event       @relation(fields: [eventId], references: [id])
 
-  @@map("events")
+  items       OrderItem[]
+  tickets     Ticket[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id           Uuid @id @default(uuid())
+
+  orderId      Uuid
+  ticketTypeId Uuid
+
+  quantity     Int
+  unitPrice    Float
+  subtotal     Float
+
+  createdAt    DateTime @default(now())
+
+  order        Order      @relation(fields: [orderId], references: [id])
+  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
+
+  @@map("order_items")
+}
+
+model Ticket {
+  id           Uuid         @id @default(uuid())
+
+  userId       Uuid
+  eventId      Uuid
+  orderId      Uuid
+  ticketTypeId Uuid
+
+  ticketCode   String       @unique
+  status       TicketStatus @default(ACTIVE)
+
+  guestName    String?
+  guestEmail   String?
+
+  checkedInAt  DateTime?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now())
+
+  user         User       @relation(fields: [userId], references: [id])
+  event        Event      @relation(fields: [eventId], references: [id])
+  order        Order      @relation(fields: [orderId], references: [id])
+  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
+
+  @@map("tickets")
 }
